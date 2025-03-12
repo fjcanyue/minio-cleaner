@@ -49,7 +49,6 @@ jobs:
       - name: 打包配置文件
         run: |
           cp config.example.yaml dist/config.yaml
-          cp README.md dist/
 
       - name: 创建ZIP包
         run: |
@@ -63,17 +62,16 @@ jobs:
               mv "$FILE" "$DIR/minio-cleaner"
             fi
             cp config.yaml "$DIR/"
-            cp README.md "$DIR/"
             zip -r "${DIR}.zip" "$DIR"
             rm -rf "$DIR"
           done
-          rm config.yaml README.md
+          rm config.yaml
 
       - name: 创建Release
         uses: softprops/action-gh-release@v1
         with:
           tag_name: ${{ github.event.inputs.version }}
-          name: Release ${{ github.event.inputs.version }}
+          name: ${{ github.event.inputs.version }}
           draft: false
           prerelease: false
           files: dist/*.zip
