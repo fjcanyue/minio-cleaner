@@ -1,0 +1,13 @@
+minio:
+  endpoint: "play.min.io"
+  accessKeyId: "your-access-key"
+  secretAccessKey: "your-secret-key"
+  useSSL: true
+  bucket: "your-bucket"
+
+cleanup:
+  maxAge: 365  # 文件最大保留天数
+  minSize: 5242880  # 文件最小大小（字节），默认5MB
+  dryRun: true  # 是否仅预览不实际删除
+  workers: 5  # 并发工作协程数
+  logFile: "logs/cleaner.log"  # 日志文件路径
