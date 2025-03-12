@@ -1,0 +1,82 @@
+name: Release Build
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: '版本号 (例如: v1.0.0)'
+        required: true
+        type: string
+
+jobs:
+  build:
+    name: Build and Release
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v4
+
+      - name: 设置Go环境
+        uses: actions/setup-go@v4
+        with:
+          go-version: '1.21'
+
+      - name: 验证版本格式
+        run: |
+          if [[ ! ${{ github.event.inputs.version }} =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "错误: 版本号格式无效。请使用格式 v1.0.0"
+            exit 1
+          fi
+
+      - name: 构建多平台二进制文件
+        run: |
+          mkdir -p dist
+          PLATFORMS=("windows/amd64" "linux/amd64" "darwin/amd64" "darwin/arm64")
+          for PLATFORM in "${PLATFORMS[@]}"; do
+            OS="${PLATFORM%/*}"
+            ARCH="${PLATFORM#*/}"
+            OUTPUT="dist/minio-cleaner-${{ github.event.inputs.version }}-${OS}-${ARCH}"
+            if [ "$OS" = "windows" ]; then
+              OUTPUT="${OUTPUT}.exe"
+            fi
+            echo "构建 $OS/$ARCH..."
+            GOOS=$OS GOARCH=$ARCH go build -o "$OUTPUT" -v
+          done
+
+      - name: 打包配置文件
+        run: |
+          cp config.example.yaml dist/config.yaml
+          cp README.md dist/
+
+      - name: 创建ZIP包
+        run: |
+          cd dist
+          for FILE in minio-cleaner-*; do
+            DIR="${FILE%.*}"
+            mkdir -p "$DIR"
+            if [[ "$FILE" == *.exe ]]; then
+              mv "$FILE" "$DIR/"
+            else
+              mv "$FILE" "$DIR/minio-cleaner"
+            fi
+            cp config.yaml "$DIR/"
+            cp README.md "$DIR/"
+            zip -r "${DIR}.zip" "$DIR"
+            rm -rf "$DIR"
+          done
+          rm config.yaml README.md
+
+      - name: 创建Release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: ${{ github.event.inputs.version }}
+          name: Release ${{ github.event.inputs.version }}
+          draft: false
+          prerelease: false
+          files: dist/*.zip
+          generate_release_notes: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
